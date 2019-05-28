@@ -22,8 +22,8 @@ import logging
 from telegram import ReplyKeyboardMarkup
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, RegexHandler,
                           ConversationHandler)
-from os import environ
-
+from os import getenv
+import sys
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -36,7 +36,24 @@ reply_keyboard = [['Age', 'Favourite colour'],
                   ['Number of siblings', 'Something else...'],
                   ['Done']]
 markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
-TOKEN = environ.get('TOKEN')
+MODE = getenv('MODE', 'dev')
+TOKEN = getenv('TOKEN')
+
+if MODE == "dev":
+    def run(updater):
+        updater.start_polling()
+elif MODE == "production":
+    def run(updater):
+        PORT = int(getenv("PORT", "8443"))
+        HEROKU_APP_NAME = getenv("HEROKU_APP_NAME")
+        # Code from https://github.com/python-telegram-bot/python-telegram-bot/wiki/Webhooks#heroku
+        updater.start_webhook(listen="0.0.0.0",
+                              port=PORT,
+                              url_path=TOKEN)
+        updater.bot.set_webhook("https://{}.herokuapp.com/{}".format(HEROKU_APP_NAME, TOKEN))
+else:
+    logger.error("No MODE specified!")
+    sys.exit(1)
 
 
 def facts_to_str(user_data):
